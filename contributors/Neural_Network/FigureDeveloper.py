@@ -16,8 +16,92 @@ from mpl_toolkits.basemap import Basemap
 import matplotlib.ticker as ticker
 from matplotlib.gridspec import GridSpec
 import contextily as cx
+import matplotlib.patches as mpatches 
+
 
 warnings.filterwarnings("ignore")
+
+
+#plot time series of regionally average obs and preds
+def Peak_SWE(datelist, df, RegionList):
+    
+ 
+    RegionStats = pd.DataFrame()   
+    for region in RegionList:
+        RegionDF = pd.DataFrame()
+        cols = ['Date', 'y_test', 'y_pred']
+        for date in datelist:
+            RegionDate = df[region][df[region]['Date'] == date].copy()
+            RegionDate = RegionDate[cols]
+            RegionDate.set_index('Date', inplace = True, drop = True)
+            RegionDF = pd.concat([RegionDF, RegionDate])
+
+        RegionDF.index = pd.to_datetime(RegionDF.index)
+        RegionDF = RegionDF.resample('D').mean().dropna()
+        if region == 'N_Sierras':
+            name = 'Northern Sierra Nevada'
+        elif region == 'S_Sierras_High':
+            name = 'Southern Sierra Nevada High'
+        elif region == 'S_Sierras_Low':
+            name = 'Southern Sierra Nevada Low'
+        elif region == 'Greater_Yellowstone':
+            name = 'Greater Yellowstone'
+        elif region == 'N_Co_Rockies':
+            name = 'Upper Colorado Rockies'
+        elif region == 'SW_Mont':
+            name = 'SW Montana'
+        elif region == 'SW_Co_Rockies':
+            name = 'San Juan Mountains'
+        elif region == 'GBasin':
+            name = 'Great Basin'
+        elif region == 'N_Wasatch':
+            name = 'Northern Wasatch'
+        elif region == 'N_Cascade':
+            name = 'Northern Cascades'
+        elif region == 'S_Wasatch':
+            name = 'SW Utah'
+        elif region == 'SW_Mtns':
+            name = 'SW Desert'
+        elif region == 'E_WA_N_Id_W_Mont':
+            name = 'NW Rockies'
+        elif region == 'S_Wyoming':
+            name = 'Northern Colorado Rockies'
+        elif region == 'SE_Co_Rockies':
+            name = 'Sangre de Cristo Mountains'
+        elif region == 'Ca_Coast':
+            name = 'California Coast Range'
+        elif region == 'E_Or':
+            name = 'Blue Mountains of Oregon'
+        elif region == 'N_Yellowstone':
+            name = 'Elkhorn Mountains of Montana '
+        elif region == 'S_Cascade':
+            name = 'Southern Cascades'
+        elif region == 'Wa_Coast':
+            name = 'Washington Coast Range '
+        elif region == 'Greater_Glacier':
+            name = 'Northern Rockies'
+        elif region == 'Or_Coast':
+            name = 'Oregon Coast Range'
+        elif region == 'Sawtooth':
+            name = 'Sawtooth'
+        
+        #add max obs sw
+        maxpred = max(RegionDF['y_pred'])
+        maxobs = max(RegionDF['y_test'])
+        dateobs = RegionDF[RegionDF['y_test'] == maxobs].index[0].strftime("%Y-%m-%d")
+        datepred = RegionDF[RegionDF['y_pred'] == maxpred].index[0].strftime("%Y-%m-%d")
+        #add metrics to df
+        cols = ['Region', 'ObsMax', 'PredMax', 'ObsMaxDate', 'PredMaxDate']
+        data = [name, maxobs, maxpred,dateobs, datepred]
+        DF = pd.DataFrame(data)
+        DF = DF.T
+        DF.columns = cols
+   
+        #display(DF)
+        #add to regional stats df
+        RegionStats = pd.concat([RegionStats, DF])
+    RegionStats.set_index('Region', inplace = True, drop =True)
+    return RegionStats
 
 
 
@@ -161,6 +245,7 @@ def Slurm_Class_parity(Model_Results, Maritime_Region, Prairie_Region, Alpine_Re
     ax1.set_xlim(0,300)
     ax1.set_ylim(0,300)
     ax1.tick_params(axis='y', which='major', pad=1)
+    ax1.set_xlabel('Observed SWE (cm)')
 
     #Sierra Nevada grouping
     groups = Model_Results.loc[(Model_Results["Region"]=="Southern Sierra Nevada High") | (Model_Results["Region"]=="Southern Sierra Nevada Low")].groupby('Region')
@@ -178,6 +263,7 @@ def Slurm_Class_parity(Model_Results, Maritime_Region, Prairie_Region, Alpine_Re
     tick_spacing = 100
     ax2.yaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))
     ax2.tick_params(axis='y', which='major', pad=1)
+    ax2.set_ylabel('Predicted SWE (cm)', labelpad=0)
 
     #Colorado Rockies Grouping
     groups = Model_Results.loc[(Model_Results["Region"]=="Upper Colorado Rockies")].groupby('Region')
@@ -256,7 +342,7 @@ def EvalPlots3(Model_Results, Maritime_Region, Prairie_Region, Alpine_Region, x,
     ax2.set_title('Southern Sierra Nevada')
     ax2.hlines(y=0,xmin = xmin, xmax=xmax,  color = 'black', linestyle = '--')
     #ax2.set_xlabel('Observed SWE (in)')
-    # ax2.set_ylabel(ylabel, labelpad=-10)
+    ax2.set_ylabel(ylabel, labelpad=-10)
     ax2.set_ylim(-150,150)
 
 
@@ -280,3 +366,234 @@ def EvalPlots3(Model_Results, Maritime_Region, Prairie_Region, Alpine_Region, x,
     # save figure
     plt.savefig(f"./Predictions/Hold_Out_Year/Paper_Figures/{plotname}3.png", dpi =600, bbox_inches='tight')
     plt.savefig(f"./Predictions/Hold_Out_Year/Paper_Figures/{plotname}3.pdf", dpi =600, bbox_inches='tight')
+    
+    
+    
+#plot time series of regionally average obs and preds
+def SWE_TS_plot(datelist, df, regions, plotname):
+    
+    RegionDict = {}
+    for region in regions:
+        RegionDF = pd.DataFrame()
+        cols = ['Date', 'y_test', 'y_pred']
+        for date in datelist:
+            RegionDate = df[region][df[region]['Date'] == date].copy()
+            RegionDate = RegionDate[cols]
+            RegionDate.set_index('Date', inplace = True, drop = True)
+            RegionDF = pd.concat([RegionDF, RegionDate])
+
+        RegionDF.index = pd.to_datetime(RegionDF.index)
+        RegionDF = RegionDF.resample('D').mean().dropna()
+        if region == 'N_Sierras':
+            name = 'Northern Sierra Nevada'
+        elif region == 'S_Sierras_High':
+            name = 'Southern Sierra Nevada High'
+        elif region == 'S_Sierras_Low':
+            name = 'Southern Sierra Nevada Low'
+        elif region == 'Greater_Yellowstone':
+            name = 'Greater Yellowstone'
+        elif region == 'N_Co_Rockies':
+            name = 'Upper Colorado Rockies'
+        elif region == 'SW_Mont':
+            name = 'SW Montana'
+        elif region == 'SW_Co_Rockies':
+            name = 'San Juan Mountains'
+        elif region == 'GBasin':
+            name = 'Great Basin'
+        elif region == 'N_Wasatch':
+            name = 'Northern Wasatch'
+        elif region == 'N_Cascade':
+            name = 'Northern Cascades'
+        elif region == 'S_Wasatch':
+            name = 'SW Utah'
+        elif region == 'SW_Mtns':
+            name = 'SW Desert'
+        elif region == 'E_WA_N_Id_W_Mont':
+            name = 'NW Rockies'
+        elif region == 'S_Wyoming':
+            name = 'Northern Colorado Rockies'
+        elif region == 'SE_Co_Rockies':
+            name = 'Sangre de Cristo Mountains'
+        elif region == 'Ca_Coast':
+            name = 'California Coast Range'
+        elif region == 'E_Or':
+            name = 'Blue Mountains of Oregon'
+        elif region == 'N_Yellowstone':
+            name = 'Elkhorn Mountains of Montana '
+        elif region == 'S_Cascade':
+            name = 'Southern Cascades'
+        elif region == 'Wa_Coast':
+            name = 'Washington Coast Range '
+        elif region == 'Greater_Glacier':
+            name = 'Northern Rockies'
+        elif region == 'Or_Coast':
+            name = 'Oregon Coast Range'
+        elif region == 'Sawtooth':
+            name = 'Sawtooth'
+        RegionDict[name] = RegionDF
+    
+    #Get keys from dictionary
+    keys = list(RegionDict.keys())
+    print(keys)
+
+    #make figure
+    fig, ax = plt.subplots(2,2, figsize=(7, 7))
+    
+    ax = ax.ravel()
+
+    for i in range(len(ax.ravel())):
+        key = keys[i]
+        RegionDF = RegionDict[key]
+        
+        #fig.patch.set_facecolor('white')
+        ax[i].plot(RegionDF.index, RegionDF.y_test, color = 'blue')
+        ax[i].plot(RegionDF.index, RegionDF.y_pred,  color = 'orange')
+        
+        if i == 0:
+            ax[i].set_ylabel('Snow Water Equivalent (cm)', fontsize = 12)
+            ax[i].set_xticklabels([])
+        if i == 1:
+            ax[i].set_xticklabels([])
+            
+        if i == 2:
+            ax[i].set_ylabel('Snow Water Equivalent (cm)', fontsize = 12)
+            ax[i].set_xlabel('Date', fontsize = 12)
+            ax[i].tick_params(axis='x', rotation=45)
+            
+            
+        if i == 3:
+            ax[i].set_xlabel('Date', fontsize = 12)
+            ax[i].tick_params(axis='x', rotation=45)
+            ax[i].plot(RegionDF.index, RegionDF.y_test, color = 'blue', label = 'Average in situ observations')
+            ax[i].plot(RegionDF.index, RegionDF.y_pred,  color = 'orange', label = 'Average regional estimates')
+            
+        #ax[0,0].set_xlabel('Date', fontsize = 12)
+        ax[i].set_title(key, fontsize = 14)
+
+    plt.legend( loc = 'lower center', bbox_to_anchor = (0, -0.1, 1, 1),  bbox_transform = plt.gcf().transFigure, ncol = 2)
+    plt.savefig(f"./Predictions/Hold_Out_Year/Paper_Figures/{plotname}.png", dpi = 600, box_inches = 'tight')
+    plt.show()
+    
+    
+#plot time series of regionally average obs and preds
+def SWE_TS_plot_classes(datelist, df, regions1, regions2, regions3, plotname, fontsize):
+    
+    RegionAll = regions1+regions2+regions3
+
+ 
+    RegionDict = {}
+    for region in RegionAll:
+        RegionDF = pd.DataFrame()
+        cols = ['Date', 'y_test', 'y_pred']
+        for date in datelist:
+            RegionDate = df[region][df[region]['Date'] == date].copy()
+            RegionDate = RegionDate[cols]
+            RegionDate.set_index('Date', inplace = True, drop = True)
+            RegionDF = pd.concat([RegionDF, RegionDate])
+
+        RegionDF.index = pd.to_datetime(RegionDF.index)
+        RegionDF = RegionDF.resample('D').mean().dropna()
+        if region == 'N_Sierras':
+            name = 'Northern Sierra Nevada'
+        elif region == 'S_Sierras_High':
+            name = 'Southern Sierra Nevada High'
+        elif region == 'S_Sierras_Low':
+            name = 'Southern Sierra Nevada Low'
+        elif region == 'Greater_Yellowstone':
+            name = 'Greater Yellowstone'
+        elif region == 'N_Co_Rockies':
+            name = 'Upper Colorado Rockies'
+        elif region == 'SW_Mont':
+            name = 'SW Montana'
+        elif region == 'SW_Co_Rockies':
+            name = 'San Juan Mountains'
+        elif region == 'GBasin':
+            name = 'Great Basin'
+        elif region == 'N_Wasatch':
+            name = 'Northern Wasatch'
+        elif region == 'N_Cascade':
+            name = 'Northern Cascades'
+        elif region == 'S_Wasatch':
+            name = 'SW Utah'
+        elif region == 'SW_Mtns':
+            name = 'SW Desert'
+        elif region == 'E_WA_N_Id_W_Mont':
+            name = 'NW Rockies'
+        elif region == 'S_Wyoming':
+            name = 'Northern Colorado Rockies'
+        elif region == 'SE_Co_Rockies':
+            name = 'Sangre de Cristo Mountains'
+        elif region == 'Ca_Coast':
+            name = 'California Coast Range'
+        elif region == 'E_Or':
+            name = 'Blue Mountains of Oregon'
+        elif region == 'N_Yellowstone':
+            name = 'Elkhorn Mountains of Montana '
+        elif region == 'S_Cascade':
+            name = 'Southern Cascades'
+        elif region == 'Wa_Coast':
+            name = 'Washington Coast Range '
+        elif region == 'Greater_Glacier':
+            name = 'Northern Rockies'
+        elif region == 'Or_Coast':
+            name = 'Oregon Coast Range'
+        elif region == 'Sawtooth':
+            name = 'Sawtooth'
+        RegionDict[name] = RegionDF
+    
+    #Get keys from dictionary
+    keys = list(RegionDict.keys())
+    print(keys)
+
+    #make figure
+    fig, ax = plt.subplots(6,2, figsize=(6, 12))
+    
+    ax = ax.ravel()
+
+    for i in range(len(ax.ravel())):
+        key = keys[i]
+        RegionDF = RegionDict[key]
+        
+        ax[i].plot(RegionDF.index, RegionDF.y_test, color = 'blue')
+        
+        if i<4:
+            ax[i].plot(RegionDF.index, RegionDF.y_pred,  color = 'orange')
+        if 4<=i<8:
+            ax[i].plot(RegionDF.index, RegionDF.y_pred,  color = 'black')
+        if i>=8:
+            ax[i].plot(RegionDF.index, RegionDF.y_pred,  color = 'red')
+        
+        
+        if i<10:
+        
+            if i%2 == 0:
+                ax[i].set_ylabel('Snow Water \n Equivalent (cm)', fontsize = fontsize)
+                ax[i].set_xticklabels([])
+            if i%2 >=0:
+                ax[i].set_xticklabels([])
+        else:
+
+            if i == 10:
+                ax[i].set_ylabel('Snow Water \n Equivalent (cm)', fontsize = fontsize)
+                ax[i].set_xlabel('Date', fontsize = fontsize)
+                ax[i].tick_params(axis='x', rotation=45)
+
+
+            if i == 11:
+                ax[i].set_xlabel('Date', fontsize = fontsize)
+                ax[i].tick_params(axis='x', rotation=45)
+                ax[i].plot(RegionDF.index, RegionDF.y_test, color = 'blue')
+                ax[i].plot(RegionDF.index, RegionDF.y_pred,  color = 'red')
+
+        #ax[0,0].set_xlabel('Date', fontsize = fontsize)
+        ax[i].set_title(key, fontsize = fontsize*1.2)
+        # Creating legend with color box 
+    maritime = mpatches.Patch(color='orange', label='Average Regional Maritime Estimates') 
+    prairie = mpatches.Patch(color='black', label='Average Regional Prairie Estimates') 
+    alpine = mpatches.Patch(color='red', label='Average Regional Alpine Estimates')
+    obs = mpatches.Patch(color='blue', label='Average Observations')
+    #plt.legend(handles=[pop_a,pop_b]) 
+    plt.legend( handles=[maritime,prairie, alpine, obs], loc = 'lower center', bbox_to_anchor = (0, 0, 1, 1),  bbox_transform = plt.gcf().transFigure, ncol = 2, fontsize = fontsize)
+    plt.savefig(f"./Predictions/Hold_Out_Year/Paper_Figures/{plotname}.png", dpi = 600, box_inches = 'tight')
+    return RegionDict, RegionAll
+    plt.show()
